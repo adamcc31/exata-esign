@@ -86,7 +86,12 @@ export async function generateBlankPdf(data: BlankPdfData): Promise<Buffer> {
   }
 
   // Nama Lengkap at the bottom under signature
-  page1.drawText(`${data.fullName}`, { x: 460, y: 73, size: fontSize, font, color });
+  // Rata kanan (Right-aligned) agar nama panjang memanjang ke kiri
+  const nameWidth = font.widthOfTextAtSize(data.fullName, fontSize);
+  const rightAnchorX = 550; // Perkiraan batas margin kanan dokumen
+  const nameX = rightAnchorX - nameWidth;
+  
+  page1.drawText(`${data.fullName}`, { x: nameX, y: 73, size: fontSize, font, color });
 
   // PDF metadata
   pdfDoc.setTitle(`Surat Pernyataan - ${data.fullName}`);
