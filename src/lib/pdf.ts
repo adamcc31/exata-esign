@@ -91,7 +91,7 @@ export async function generateBlankPdf(data: BlankPdfData): Promise<Buffer> {
   const rightAnchorX = 550; // Perkiraan batas margin kanan dokumen
   const nameX = rightAnchorX - nameWidth;
   
-  page1.drawText(`${data.fullName}`, { x: nameX, y: 73, size: fontSize, font, color });
+  page1.drawText(`${data.fullName}`, { x: nameX, y: 68, size: fontSize, font, color });
 
   // PDF metadata
   pdfDoc.setTitle(`Surat Pernyataan - ${data.fullName}`);
