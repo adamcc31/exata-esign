@@ -1,0 +1,186 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap');
+
+@layer base {
+  * {
+    @apply box-border;
+  }
+  
+  body {
+    font-family: 'Inter', system-ui, sans-serif;
+    @apply text-on-surface bg-background antialiased;
+  }
+
+  h1, h2, h3, h4, h5, h6, .font-headline {
+    font-family: 'Manrope', system-ui, sans-serif;
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-outline-variant rounded-full;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-outline;
+  }
+}
+
+@layer components {
+  /* ══════════════════════════════════════════════
+     STATUS BADGES — Material Design 3 Chips
+     ══════════════════════════════════════════════ */
+  .badge-pending {
+    @apply inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium
+           bg-surface-container text-on-surface-variant;
+  }
+  .badge-signed {
+    @apply inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium
+           bg-tertiary-container text-on-tertiary-container;
+  }
+  .badge-expired {
+    @apply inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium
+           bg-error-container text-on-error-container;
+  }
+
+  /* ══════════════════════════════════════════════
+     CARDS — Elevated Surface with subtle shadow
+     ══════════════════════════════════════════════ */
+  .card {
+    @apply bg-surface-container-lowest rounded-DEFAULT shadow-card
+           transition-shadow duration-300 overflow-hidden;
+  }
+  .card:hover {
+    @apply shadow-card-hover;
+  }
+  .card-header {
+    @apply px-6 py-5 border-b border-surface-variant/50;
+  }
+  .card-body {
+    @apply px-6 py-5;
+  }
+
+  /* ══════════════════════════════════════════════
+     BUTTONS — Gradient Primary, Tonal Secondary
+     ══════════════════════════════════════════════ */
+  .btn {
+    @apply inline-flex items-center justify-center gap-2
+           rounded-DEFAULT px-6 py-3
+           text-sm font-medium font-body
+           transition-all duration-200
+           focus:outline-none focus:ring-2 focus:ring-primary/20 focus:ring-offset-2
+           disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  .btn-primary {
+    @apply btn bg-gradient-to-r from-primary to-primary-container
+           text-on-primary shadow-sm hover:opacity-90;
+  }
+  .btn-secondary {
+    @apply btn bg-surface-container-high text-primary
+           hover:bg-surface-variant;
+  }
+  .btn-danger {
+    @apply btn bg-error text-on-error 
+           hover:opacity-90;
+  }
+  .btn-ghost {
+    @apply btn bg-transparent text-on-surface-variant
+           hover:bg-surface-container;
+  }
+  .btn-sm {
+    @apply px-3 py-1.5 text-xs;
+  }
+
+  /* ══════════════════════════════════════════════
+     INPUTS — Filled, borderless Material style
+     ══════════════════════════════════════════════ */
+  .input {
+    @apply w-full rounded-DEFAULT border-none
+           bg-surface-container text-on-surface
+           placeholder:text-outline
+           px-4 py-3 text-sm font-body
+           focus:ring-2 focus:ring-primary/20
+           transition-all duration-200;
+  }
+  .label {
+    @apply block text-sm font-medium text-on-surface mb-2 font-body;
+  }
+
+  /* ══════════════════════════════════════════════
+     TABLE — Card-wrapped, surface-tinted header
+     ══════════════════════════════════════════════ */
+  .table-container {
+    @apply overflow-x-auto;
+  }
+  .table-container table {
+    @apply w-full text-sm font-body;
+  }
+  .table-container thead {
+    @apply bg-surface-container-low border-b border-surface-variant/50;
+  }
+  .table-container th {
+    @apply px-5 py-3.5 text-left text-[0.6875rem] font-semibold text-outline
+           uppercase tracking-wider;
+  }
+  .table-container td {
+    @apply px-5 py-4 text-on-surface border-b border-surface-variant/30;
+  }
+  .table-container tbody tr {
+    @apply transition-colors duration-200;
+  }
+  .table-container tbody tr:hover {
+    @apply bg-surface-container-low;
+  }
+  .table-container tbody tr:last-child td {
+    @apply border-b-0;
+  }
+
+  /* ══════════════════════════════════════════════
+     MATERIAL ICONS HELPER
+     ══════════════════════════════════════════════ */
+  .material-symbols-outlined {
+    font-family: 'Material Symbols Outlined';
+    font-weight: normal;
+    font-style: normal;
+    font-size: 24px;
+    line-height: 1;
+    letter-spacing: normal;
+    text-transform: none;
+    display: inline-block;
+    white-space: nowrap;
+    word-wrap: normal;
+    direction: ltr;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    font-feature-settings: 'liga';
+  }
+
+  /* ══════════════════════════════════════════════
+     STAT CARDS — Summary with accent overlay
+     ══════════════════════════════════════════════ */
+  .stat-card {
+    @apply bg-surface-container-lowest rounded-DEFAULT p-6
+           shadow-card relative overflow-hidden 
+           transition-all duration-300;
+  }
+  .stat-card:hover {
+    @apply shadow-card-hover -translate-y-0.5;
+  }
+  .stat-card-overlay {
+    @apply absolute inset-0 pointer-events-none;
+  }
+  .stat-card-icon {
+    @apply p-2.5 rounded-full flex items-center justify-center;
+  }
+}
