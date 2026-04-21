@@ -3,7 +3,9 @@ import { query } from '@/lib/db';
 
 // GET /api/sign/[slug] — Check slug validity (before verification)
 // Per SEC-05: only return first name, status, and expiry — no sensitive data
-export async function GET(req: NextRequest, { params }: { params: { slug: string } }) {
+export async function GET(req: NextRequest, props: { params: Promise<{ slug: string }> }) {
+  const params = await props.params;
+  const { slug } = params;
   try {
     const { slug } = params;
 

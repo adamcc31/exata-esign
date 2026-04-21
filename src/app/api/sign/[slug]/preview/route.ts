@@ -3,7 +3,9 @@ import { query } from '@/lib/db';
 import { getPresignedUrl } from '@/lib/s3';
 
 // GET /api/sign/[slug]/preview — Download blank (pre-filled) PDF for preview before signing
-export async function GET(req: NextRequest, { params }: { params: { slug: string } }) {
+export async function GET(req: NextRequest, props: { params: Promise<{ slug: string }> }) {
+  const params = await props.params;
+  const { slug } = params;
   try {
     const { slug } = params;
 

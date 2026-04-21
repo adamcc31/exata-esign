@@ -5,7 +5,9 @@ import bcrypt from 'bcrypt';
 import { createAuditLog } from '@/services/audit.service';
 
 // POST /api/users/[id]/reset-password
-export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
+  const { id } = params;
   try {
     const admin = await requireAdmin();
     const { id } = params;

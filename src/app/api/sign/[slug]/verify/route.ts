@@ -5,7 +5,8 @@ import { query } from '@/lib/db';
 const rateLimitMap = new Map<string, { attempts: number; lockUntil: number }>();
 
 // POST /api/sign/[slug]/verify — Verify birth date
-export async function POST(req: NextRequest, { params }: { params: { slug: string } }) {
+export async function POST(req: NextRequest, props: { params: Promise<{ slug: string }> }) {
+  const params = await props.params;
   const { slug } = params;
   const ip = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown';
   const rateKey = `${ip}_${slug}`;

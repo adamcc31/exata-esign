@@ -4,7 +4,9 @@ import { requireAdmin } from '@/lib/auth';
 import { createAuditLog } from '@/services/audit.service';
 
 // PATCH /api/users/[id] — Update user (deactivate, etc.)
-export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
+  const { id } = params;
   try {
     const admin = await requireAdmin();
     const { id } = params;

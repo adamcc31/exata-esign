@@ -4,7 +4,9 @@ import { requireAuth } from '@/lib/auth';
 import { getPresignedUrl } from '@/lib/s3';
 
 // GET /api/batches/[id]/export — Download output Excel
-export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
+  const { id } = params;
   try {
     const user = await requireAuth();
     const { id } = params;

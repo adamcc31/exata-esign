@@ -18,7 +18,8 @@ async function getBufferFromS3(key: string): Promise<Buffer> {
 }
 
 // POST /api/sign/[slug]/submit — Submit signature
-export async function POST(req: NextRequest, { params }: { params: { slug: string } }) {
+export async function POST(req: NextRequest, props: { params: Promise<{ slug: string }> }) {
+  const params = await props.params;
   const { slug } = params;
 
   try {
