@@ -21,12 +21,12 @@ export async function POST(req: NextRequest, props: { params: Promise<{ slug: st
 
   try {
     const body = await req.json();
-    const { nik, address, city } = body;
+    const { nik, address, city, email } = body;
 
     // Fetch current client record
     const result = await query(
       `SELECT id, status, full_name, TO_CHAR(birth_date, 'YYYY-MM-DD') as birth_date_str,
-              nik, address, city, blank_pdf_url
+              nik, address, city, email, blank_pdf_url
        FROM clients WHERE slug = $1`,
       [slug]
     );
@@ -46,6 +46,7 @@ export async function POST(req: NextRequest, props: { params: Promise<{ slug: st
     const finalNik = client.nik || (nik || '').trim();
     const finalAddress = client.address || (address || '').trim();
     const finalCity = client.city || (city || '').trim();
+    const finalEmail = client.email || (email || '').trim();
 
     // Validate
     if (finalNik && !/^\d{16}$/.test(finalNik)) {
@@ -60,6 +61,9 @@ export async function POST(req: NextRequest, props: { params: Promise<{ slug: st
     if (!finalCity) {
       return NextResponse.json({ error: 'Kota wajib diisi.' }, { status: 400 });
     }
+    if (!finalEmail || !/^\S+@\S+\.\S+$/.test(finalEmail)) {
+      return NextResponse.json({ error: 'Alamat email tidak valid atau kosong.' }, { status: 400 });
+    }
 
     // Format birth date for PDF
     const birthDateParts = client.birth_date_str.split('-');
@@ -69,8 +73,8 @@ export async function POST(req: NextRequest, props: { params: Promise<{ slug: st
 
     // Save to DB
     await query(
-      `UPDATE clients SET nik = $1, address = $2, city = $3, updated_at = NOW() WHERE slug = $4`,
-      [finalNik, finalAddress, finalCity, slug]
+      `UPDATE clients SET nik = $1, address = $2, city = $3, email = $4, updated_at = NOW() WHERE slug = $5`,
+      [finalNik, finalAddress, finalCity, finalEmail, slug]
     );
 
     // Regenerate blank PDF with COMPLETE data + current date
@@ -119,6 +123,7 @@ export async function POST(req: NextRequest, props: { params: Promise<{ slug: st
         nik: finalNik,
         address: finalAddress,
         city: finalCity,
+        email: finalEmail,
         letterNumber: slug,
         signingDate: currentDate,
       },

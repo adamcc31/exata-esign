@@ -22,7 +22,7 @@ const pool = new Pool({
 async function runMigration() {
   const client = await pool.connect();
   try {
-    const sqlPath = path.join(__dirname, 'migration-v2.sql');
+    const sqlPath = path.join(__dirname, 'migration-v3.sql');
     const sql = fs.readFileSync(sqlPath, 'utf8');
     
     console.log('Running migration...');

@@ -13,6 +13,7 @@ interface ClientData {
   nik: string;
   address: string;
   city: string;
+  email?: string;
   letterNumber: string;
   signingDate?: string;  // Current date (WIB) for display
 }
@@ -46,6 +47,7 @@ export default function SignPage() {
   const [additionalNik, setAdditionalNik] = useState('');
   const [additionalAddress, setAdditionalAddress] = useState('');
   const [additionalCity, setAdditionalCity] = useState('');
+  const [additionalEmail, setAdditionalEmail] = useState('');
   const [needsAdditionalData, setNeedsAdditionalData] = useState(false);
 
   // Initial slug check on mount
@@ -95,6 +97,7 @@ export default function SignPage() {
         setAdditionalNik(data.clientData.nik || '');
         setAdditionalAddress(data.clientData.address || '');
         setAdditionalCity(data.clientData.city || '');
+        setAdditionalEmail(data.clientData.email || '');
         setStatus('fill-data');
       } else {
         setStatus('preview');
@@ -123,6 +126,10 @@ export default function SignPage() {
       setError('Kota wajib diisi.');
       return;
     }
+    if (!additionalEmail.trim() || !/^\S+@\S+\.\S+$/.test(additionalEmail)) {
+      setError('Alamat email valid wajib diisi.');
+      return;
+    }
 
     setLoading(true);
     try {
@@ -134,6 +141,7 @@ export default function SignPage() {
           nik: additionalNik,
           address: additionalAddress.trim(),
           city: additionalCity.trim(),
+          email: additionalEmail.trim(),
         }),
       });
       const data = await res.json();
@@ -161,6 +169,7 @@ export default function SignPage() {
         payload.nik = additionalNik;
         payload.address = additionalAddress.trim();
         payload.city = additionalCity.trim();
+        payload.email = additionalEmail.trim();
       }
 
       const res = await fetch(`/api/sign/${slug}/submit`, {
@@ -176,19 +185,6 @@ export default function SignPage() {
       setError(err.message || 'Gagal mengirim tanda tangan');
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleDownload = async () => {
-    try {
-      const res = await fetch(`/api/sign/${slug}/download`);
-      const data = await res.json();
-      if (data.url) {
-        // Use window.location.href instead of window.open for better iOS Safari compatibility
-        window.location.href = data.url;
-      }
-    } catch {
-      alert('Gagal mengunduh dokumen.');
     }
   };
 
@@ -255,14 +251,19 @@ export default function SignPage() {
   if (status === 'signed') {
     return (
       <PageWrapper>
-        <StatusCard icon="verified" title="Dokumen Sudah Ditandatangani" color="success">
-          <p className="font-body text-sm text-outline">
-            Halo {firstName}, dokumen Anda sudah berhasil ditandatangani sebelumnya.
+        <StatusCard icon="mark_email_read" title="Penandatanganan Berhasil!" color="primary">
+          <p className="font-body text-sm text-outline mb-4">
+            Terima kasih, dokumen Anda telah berhasil ditandatangani dan disimpan secara aman.
           </p>
-          <button onClick={handleDownload} className="btn-primary mt-5 w-full">
-            <span className="material-symbols-outlined text-[18px]">download</span>
-            Unduh Dokumen
-          </button>
+          <div className="bg-primary-container/30 border border-primary/20 rounded-DEFAULT p-4 text-left">
+            <p className="font-body text-xs text-on-primary-container flex items-center gap-2 mb-2 font-medium">
+              <span className="material-symbols-outlined text-[16px]">forward_to_inbox</span>
+              Salinan PDF Terkirim
+            </p>
+            <p className="font-body text-xs text-outline leading-relaxed">
+              Salinan resmi Surat Pernyataan Anda telah dikirimkan ke email: <strong className="text-on-surface">{clientData?.email || additionalEmail}</strong>. Silakan periksa kotak masuk (atau folder spam) Anda.
+            </p>
+          </div>
         </StatusCard>
       </PageWrapper>
     );
@@ -273,15 +274,20 @@ export default function SignPage() {
     return (
       <PageWrapper>
         <StatusCard icon="celebration" title="Terima Kasih!" color="success">
-          <p className="font-body text-sm text-outline mb-5">
-            Dokumen Anda telah berhasil ditandatangani secara digital. Anda dapat mengunduh salinan dokumen di bawah ini.
+          <p className="font-body text-sm text-outline mb-4">
+            Dokumen Anda telah berhasil ditandatangani secara digital. Salinan resmi Surat Pernyataan Anda telah dikirimkan ke alamat email Anda.
           </p>
-          <button onClick={handleDownload} className="btn-primary w-full">
-            <span className="material-symbols-outlined text-[18px]">download</span>
-            Unduh Dokumen
-          </button>
-          <p className="font-body text-xs text-outline/50 mt-4 text-center">
-            Anda juga dapat menghubungi PT. Sumber Rezeki Exata Indonesia untuk salinan dokumen.
+          <div className="bg-primary-container/30 border border-primary/20 rounded-DEFAULT p-4 text-left">
+            <p className="font-body text-xs text-on-primary-container flex items-center gap-2 mb-2 font-medium">
+              <span className="material-symbols-outlined text-[16px]">forward_to_inbox</span>
+              Salinan PDF Terkirim
+            </p>
+            <p className="font-body text-xs text-outline leading-relaxed">
+              Email dikirim ke: <strong className="text-on-surface">{clientData?.email || additionalEmail}</strong>. Silakan periksa kotak masuk (atau folder spam) Anda.
+            </p>
+          </div>
+          <p className="font-body text-xs text-outline/50 mt-5 text-center">
+            Anda dapat menutup halaman ini sekarang.
           </p>
         </StatusCard>
       </PageWrapper>
@@ -439,6 +445,27 @@ export default function SignPage() {
                 </div>
               )}
 
+              {/* Email */}
+              {!clientData?.email && (
+                <div>
+                  <label className="label" htmlFor="fill-email">
+                    Alamat Email (Pengiriman PDF) <span className="text-error">*</span>
+                  </label>
+                  <input
+                    type="email"
+                    id="fill-email"
+                    required
+                    className="input"
+                    placeholder="Contoh: budi@gmail.com"
+                    value={additionalEmail}
+                    onChange={(e) => setAdditionalEmail(e.target.value)}
+                  />
+                  <p className="font-body text-[11px] text-outline mt-1.5">
+                    Salinan PDF yang telah ditandatangani akan dikirim ke email ini.
+                  </p>
+                </div>
+              )}
+
               {error && (
                 <div className="bg-error-container border border-error/20 rounded-DEFAULT px-4 py-3 text-on-error-container text-sm font-body flex items-center gap-2">
                   <span className="material-symbols-outlined text-[18px]">error</span>
@@ -491,6 +518,7 @@ export default function SignPage() {
                 <div className="flex"><span className="w-40 text-outline font-medium shrink-0">No. KTP / NIK</span><span className="text-on-surface font-mono">: {clientData.nik || '—'}</span></div>
                 <div className="flex"><span className="w-40 text-outline font-medium shrink-0">Alamat Sesuai KTP</span><span className="text-on-surface">: {clientData.address || '—'}</span></div>
                 <div className="flex"><span className="w-40 text-outline font-medium shrink-0">Kota</span><span className="text-on-surface">: {clientData.city || '—'}</span></div>
+                <div className="flex"><span className="w-40 text-outline font-medium shrink-0">Email Tujuan</span><span className="text-on-surface font-medium text-primary">: {clientData.email || '—'}</span></div>
                 <div className="flex"><span className="w-40 text-outline font-medium shrink-0">Tanggal</span><span className="text-on-surface">: {clientData.signingDate || getCurrentDateWIB()}</span></div>
               </div>
             </div>
