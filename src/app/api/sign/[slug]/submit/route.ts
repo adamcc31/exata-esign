@@ -159,7 +159,7 @@ export async function POST(req: NextRequest, props: { params: Promise<{ slug: st
       });
 
       const mailOptions = {
-        from: '"PT Sumber Rezeki Exata Indonesia" <noreply@exata.id>',
+        from: '"PT Sumber Rezeki Exata Indonesia" <noreply@exata-indonesia.id>',
         to: finalEmail,
         subject: `Dokumen Resmi: Persetujuan Layanan Speed Nenkin 20% - ${client.full_name}`,
         text: `Yth, Bapak/Ibu ${client.full_name}\n\nMelalui surat elektronik ini, kami menyampaikan salinan resmi Surat Pernyataan Persetujuan untuk Layanan Speed Nenkin 20%. Dokumen ini merupakan satu kesatuan yang tidak terpisahkan dari Lampiran Ketentuan dan Penjelasan Layanan Nomor 053/LSN/SREI/2026.\n\nDokumen terlampir memuat rincian kesepakatan terkait percepatan pencairan dana pengembalian iuran pensiun Jepang (Dattai Ichijikin) yang telah Anda setujui. Kami menyarankan Anda untuk mengunduh dan menyimpan dokumen PDF ini sebagai referensi legal atas hak dan kewajiban administratif yang berlaku.\n\nApabila Anda membutuhkan klarifikasi lebih lanjut mengenai operasional layanan ini, silakan menghubungi tim representatif kami melalui kontak resmi yang tertera di bawah.\n\nHormat kami,\n\nDivisi Administrasi & Legal\nPT Sumber Rezeki Exata Indonesia\nGrand Galaxy City, RRG 5 no.9, Jaka Setia\nBekasi Selatan 17148, Indonesia\nWhatsApp / Telepon: 0811-9989-6308`,
