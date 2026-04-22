@@ -106,7 +106,7 @@ export default function SignPage() {
     }
   };
 
-  const handleAdditionalDataSubmit = (e: React.FormEvent) => {
+  const handleAdditionalDataSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
@@ -124,18 +124,30 @@ export default function SignPage() {
       return;
     }
 
-    // Update clientData with the filled-in values + refresh current date
-    if (clientData) {
-      setClientData({
-        ...clientData,
-        nik: additionalNik,
-        address: additionalAddress.trim(),
-        city: additionalCity.trim(),
-        signingDate: getCurrentDateWIB(),
+    setLoading(true);
+    try {
+      // Save data and regenerate blank PDF with date
+      const res = await fetch(`/api/sign/${slug}/update-data`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nik: additionalNik,
+          address: additionalAddress.trim(),
+          city: additionalCity.trim(),
+        }),
       });
-    }
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
 
-    setStatus('preview');
+      // Update clientData with the verified response + current date
+      setClientData(data.clientData);
+      
+      setStatus('preview');
+    } catch (err: any) {
+      setError(err.message || 'Gagal menyimpan data');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSign = async (base64Sign: string) => {
@@ -530,7 +542,7 @@ export default function SignPage() {
             {showPdf && pdfUrl && (
               <div>
                 <iframe
-                  src={pdfUrl}
+                  src={`${pdfUrl}&t=${Date.now()}`}
                   className="w-full"
                   style={{ height: '600px' }}
                   title="Preview Surat Pernyataan"

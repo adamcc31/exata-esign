@@ -36,6 +36,7 @@ interface BlankPdfData {
   nik: string;
   address: string;
   city: string;
+  date?: string;  // Optional date for when the PDF is regenerated after filling data
 }
 
 /**
@@ -78,10 +79,13 @@ export async function generateBlankPdf(data: BlankPdfData): Promise<Buffer> {
     page1.drawText(value, { x, y, size: fontSize, font, color });
   });
 
-  // Kota & Tanggal — date is blank at this stage (server-generated at signing)
-  // Only show city if available, no date
-  if (data.city) {
+  // Kota & Tanggal — date is blank at upload time, but filled if regenerated after user completes data
+  if (data.city && data.date) {
+    page1.drawText(`${data.city}, ${data.date}`, { x: 440, y: 188, size: fontSize, font, color });
+  } else if (data.city) {
     page1.drawText(`${data.city},`, { x: 440, y: 188, size: fontSize, font, color });
+  } else if (data.date) {
+    page1.drawText(data.date, { x: 440, y: 188, size: fontSize, font, color });
   }
 
   // Nama Lengkap at the bottom under signature area
