@@ -183,7 +183,10 @@ export default function SignPage() {
     try {
       const res = await fetch(`/api/sign/${slug}/download`);
       const data = await res.json();
-      if (data.url) window.open(data.url, '_blank');
+      if (data.url) {
+        // Use window.location.href instead of window.open for better iOS Safari compatibility
+        window.location.href = data.url;
+      }
     } catch {
       alert('Gagal mengunduh dokumen.');
     }
@@ -541,6 +544,20 @@ export default function SignPage() {
             
             {showPdf && pdfUrl && (
               <div>
+                <div className="bg-primary/5 border-b border-primary/10 p-3 flex items-center justify-between gap-4">
+                  <p className="font-body text-xs text-on-surface-variant">
+                    Jika dokumen terpotong atau tidak bisa di-scroll (khusus pengguna iPhone/Safari), silakan buka layar penuh.
+                  </p>
+                  <a
+                    href={pdfUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn-secondary py-1.5 px-3 text-xs shrink-0 whitespace-nowrap"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">open_in_new</span>
+                    Buka Layar Penuh
+                  </a>
+                </div>
                 <iframe
                   src={pdfUrl}
                   className="w-full"
