@@ -85,10 +85,10 @@ export async function generateBlankPdf(data: BlankPdfData): Promise<Buffer> {
   }
 
   // Nama Lengkap at the bottom under signature area
-  // Rata kanan (Right-aligned) agar nama panjang memanjang ke kiri
+  // Centered under the "Yang Membuat Pernyataan" column (~x=410 to ~x=560)
   const nameWidth = font.widthOfTextAtSize(data.fullName, fontSize);
-  const rightAnchorX = 550; // Perkiraan batas margin kanan dokumen
-  const nameX = rightAnchorX - nameWidth;
+  const signatureAreaCenterX = 490; // Center of the signature column
+  const nameX = Math.max(signatureAreaCenterX - nameWidth / 2, 390); // Don't go too far left
   
   page1.drawText(`${data.fullName}`, { x: nameX, y: 68, size: fontSize, font, color });
 
@@ -155,9 +155,10 @@ export async function generateSignedPdf(
   }
 
   // Nama Lengkap at the bottom under signature
+  // Centered under the "Yang Membuat Pernyataan" column (~x=410 to ~x=560)
   const nameWidth = font.widthOfTextAtSize(data.fullName, fontSize);
-  const rightAnchorX = 550;
-  const nameX = rightAnchorX - nameWidth;
+  const signatureAreaCenterX = 490; // Center of the signature column
+  const nameX = Math.max(signatureAreaCenterX - nameWidth / 2, 390); // Don't go too far left
   page1.drawText(data.fullName, { x: nameX, y: 68, size: fontSize, font, color });
 
   // ═══════════════════════════════════════════════════════
@@ -165,17 +166,20 @@ export async function generateSignedPdf(
   // ═══════════════════════════════════════════════════════
   const signatureImage = await pdfDoc.embedPng(signatureImageBytes);
 
-  // Scale signature
+  // Scale signature — larger for better visibility
   const sigDims = signatureImage.scale(0.5);
-  const maxWidth = 100;
-  const maxHeight = 50;
+  const maxWidth = 150;
+  const maxHeight = 70;
   const scale = Math.min(maxWidth / sigDims.width, maxHeight / sigDims.height, 1);
 
-  // Tanda tangan placed above the name on Page 1 (X=440, Y=100)
+  // Center signature above the name in the "Yang Membuat Pernyataan" area
+  const sigWidth = sigDims.width * scale;
+  const sigX = signatureAreaCenterX - sigWidth / 2;
+
   page1.drawImage(signatureImage, {
-    x: 440,
-    y: 100,
-    width: sigDims.width * scale,
+    x: sigX,
+    y: 90,
+    width: sigWidth,
     height: sigDims.height * scale,
   });
 

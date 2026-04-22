@@ -14,6 +14,17 @@ interface ClientData {
   address: string;
   city: string;
   letterNumber: string;
+  signingDate?: string;  // Current date (WIB) for display
+}
+
+// Helper: generate current date in WIB formatted as "22 April 2026"
+function getCurrentDateWIB(): string {
+  return new Intl.DateTimeFormat('id-ID', {
+    timeZone: 'Asia/Jakarta',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  }).format(new Date());
 }
 
 export default function SignPage() {
@@ -74,7 +85,9 @@ export default function SignPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
 
-      setClientData(data.clientData);
+      // Attach current date (WIB) for display purposes
+      const enrichedData = { ...data.clientData, signingDate: getCurrentDateWIB() };
+      setClientData(enrichedData);
       setNeedsAdditionalData(data.needsAdditionalData || false);
 
       if (data.needsAdditionalData) {
@@ -111,13 +124,14 @@ export default function SignPage() {
       return;
     }
 
-    // Update clientData with the filled-in values
+    // Update clientData with the filled-in values + refresh current date
     if (clientData) {
       setClientData({
         ...clientData,
         nik: additionalNik,
         address: additionalAddress.trim(),
         city: additionalCity.trim(),
+        signingDate: getCurrentDateWIB(),
       });
     }
 
@@ -462,6 +476,7 @@ export default function SignPage() {
                 <div className="flex"><span className="w-40 text-outline font-medium shrink-0">No. KTP / NIK</span><span className="text-on-surface font-mono">: {clientData.nik || '—'}</span></div>
                 <div className="flex"><span className="w-40 text-outline font-medium shrink-0">Alamat Sesuai KTP</span><span className="text-on-surface">: {clientData.address || '—'}</span></div>
                 <div className="flex"><span className="w-40 text-outline font-medium shrink-0">Kota</span><span className="text-on-surface">: {clientData.city || '—'}</span></div>
+                <div className="flex"><span className="w-40 text-outline font-medium shrink-0">Tanggal</span><span className="text-on-surface">: {clientData.signingDate || getCurrentDateWIB()}</span></div>
               </div>
             </div>
           </div>

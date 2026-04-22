@@ -70,19 +70,11 @@ export default function BatchesPage() {
       [
         'Nama Lengkap',
         'Tanggal Lahir',
-        'NIK',
-        'Alamat Sesuai KTP',
-        'Kota',
-        'Tanggal',
         'PIC',
       ],
       [
         'Budi Santoso',
         '31/12/1990',
-        '3201011234567890',
-        'Jl. Melati No. 10, Jakarta',
-        'Jakarta',
-        '12 April 2026',
         'Admin Exata',
       ]
     ]);
