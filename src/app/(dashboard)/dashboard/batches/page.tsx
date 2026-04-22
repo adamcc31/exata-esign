@@ -69,12 +69,12 @@ export default function BatchesPage() {
     const ws = xlsx.utils.aoa_to_sheet([
       [
         'Nama Lengkap',
-        'Tanggal Lahir',
+        'Tanggal Lahir (YYYYMMDD)',
         'PIC',
       ],
       [
         'Budi Santoso',
-        '31/12/1990',
+        '19901231',
         'Admin Exata',
       ]
     ]);

@@ -98,12 +98,18 @@ export function validateAndParseBatchExcel(buffer: Buffer): {
 
     // Date parsing for birth date
     let birthDate: Date;
-    const dateVal = row['Tanggal Lahir'];
+    const dateVal = row['Tanggal Lahir (YYYYMMDD)'] || row['Tanggal Lahir'];
     if (dateVal instanceof Date && !isNaN(dateVal.getTime())) {
       birthDate = dateVal;
     } else {
       const dateStr = String(dateVal || '').trim();
-      if (dateStr.includes('/')) {
+      if (dateStr.length === 8 && /^\d+$/.test(dateStr)) {
+        // Format YYYYMMDD (e.g. 19901231)
+        const year = Number(dateStr.substring(0, 4));
+        const month = Number(dateStr.substring(4, 6));
+        const day = Number(dateStr.substring(6, 8));
+        birthDate = new Date(year, month - 1, day);
+      } else if (dateStr.includes('/')) {
         const parts = dateStr.split('/');
         if (parts.length === 3) {
           birthDate = new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]));
