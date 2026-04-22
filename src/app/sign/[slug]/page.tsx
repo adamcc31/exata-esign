@@ -542,7 +542,7 @@ export default function SignPage() {
             {showPdf && pdfUrl && (
               <div>
                 <iframe
-                  src={`${pdfUrl}&t=${Date.now()}`}
+                  src={pdfUrl}
                   className="w-full"
                   style={{ height: '600px' }}
                   title="Preview Surat Pernyataan"
