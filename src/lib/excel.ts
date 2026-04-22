@@ -98,7 +98,7 @@ export function validateAndParseBatchExcel(buffer: Buffer): {
 
     // Date parsing for birth date
     let birthDate: Date;
-    const dateVal = row['Tanggal Lahir (YYYYMMDD)'] || row['Tanggal Lahir'];
+    const dateVal = row['Tanggal Lahir'];
     if (dateVal instanceof Date && !isNaN(dateVal.getTime())) {
       birthDate = dateVal;
     } else {

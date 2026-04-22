@@ -69,7 +69,7 @@ export default function BatchesPage() {
     const ws = xlsx.utils.aoa_to_sheet([
       [
         'Nama Lengkap',
-        'Tanggal Lahir (YYYYMMDD)',
+        'Tanggal Lahir',
         'PIC',
       ],
       [
