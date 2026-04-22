@@ -4,7 +4,17 @@ import React, { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import { SigningCanvas } from '@/components/SigningCanvas';
 
-type SlugStatus = 'loading' | 'invalid' | 'expired' | 'signed' | 'pending' | 'verify' | 'preview' | 'success';
+type SlugStatus = 'loading' | 'invalid' | 'expired' | 'signed' | 'pending' | 'verify' | 'fill-data' | 'preview' | 'success';
+
+interface ClientData {
+  id: string;
+  fullName: string;
+  birthDate: string;
+  nik: string;
+  address: string;
+  city: string;
+  letterNumber: string;
+}
 
 export default function SignPage() {
   const params = useParams();
@@ -12,7 +22,7 @@ export default function SignPage() {
 
   const [status, setStatus] = useState<SlugStatus>('loading');
   const [firstName, setFirstName] = useState('');
-  const [clientData, setClientData] = useState<any>(null);
+  const [clientData, setClientData] = useState<ClientData | null>(null);
   const [birthDate, setBirthDate] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -20,6 +30,12 @@ export default function SignPage() {
   const [loadingPdf, setLoadingPdf] = useState(false);
   const [showPdf, setShowPdf] = useState(false);
   const [hasAgreed, setHasAgreed] = useState(false);
+
+  // Additional data form state (for when NIK/address/city are missing)
+  const [additionalNik, setAdditionalNik] = useState('');
+  const [additionalAddress, setAdditionalAddress] = useState('');
+  const [additionalCity, setAdditionalCity] = useState('');
+  const [needsAdditionalData, setNeedsAdditionalData] = useState(false);
 
   // Initial slug check on mount
   useEffect(() => {
@@ -59,7 +75,17 @@ export default function SignPage() {
       if (!res.ok) throw new Error(data.error);
 
       setClientData(data.clientData);
-      setStatus('preview');
+      setNeedsAdditionalData(data.needsAdditionalData || false);
+
+      if (data.needsAdditionalData) {
+        // Pre-fill with whatever data we have from DB
+        setAdditionalNik(data.clientData.nik || '');
+        setAdditionalAddress(data.clientData.address || '');
+        setAdditionalCity(data.clientData.city || '');
+        setStatus('fill-data');
+      } else {
+        setStatus('preview');
+      }
     } catch (err: any) {
       setError(err.message || 'Verifikasi gagal');
     } finally {
@@ -67,15 +93,54 @@ export default function SignPage() {
     }
   };
 
+  const handleAdditionalDataSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+
+    // Client-side validation (backend re-validates)
+    if (!additionalNik || !/^\d{16}$/.test(additionalNik)) {
+      setError('NIK harus terdiri dari 16 digit angka.');
+      return;
+    }
+    if (!additionalAddress.trim()) {
+      setError('Alamat Sesuai KTP wajib diisi.');
+      return;
+    }
+    if (!additionalCity.trim()) {
+      setError('Kota wajib diisi.');
+      return;
+    }
+
+    // Update clientData with the filled-in values
+    if (clientData) {
+      setClientData({
+        ...clientData,
+        nik: additionalNik,
+        address: additionalAddress.trim(),
+        city: additionalCity.trim(),
+      });
+    }
+
+    setStatus('preview');
+  };
+
   const handleSign = async (base64Sign: string) => {
     setLoading(true);
     setError('');
 
     try {
+      // Build payload — include additional data if it was filled by the client
+      const payload: any = { signatureImageBase64: base64Sign };
+      if (needsAdditionalData) {
+        payload.nik = additionalNik;
+        payload.address = additionalAddress.trim();
+        payload.city = additionalCity.trim();
+      }
+
       const res = await fetch(`/api/sign/${slug}/submit`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ signatureImageBase64: base64Sign }),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
@@ -199,6 +264,9 @@ export default function SignPage() {
     return (
       <PageWrapper>
         <div className="w-full max-w-md mx-auto animate-slide-up">
+          {/* Step indicator */}
+          <StepIndicator currentStep={1} totalSteps={needsAdditionalData ? 4 : 3} />
+
           <div className="card p-8">
             <div className="text-center mb-6">
               <div className="w-14 h-14 rounded-lg bg-primary-fixed flex items-center justify-center mx-auto mb-4">
@@ -258,11 +326,129 @@ export default function SignPage() {
     );
   }
 
+  // Fill additional data (NIK, Alamat, Kota) — NEW STEP
+  if (status === 'fill-data') {
+    return (
+      <PageWrapper>
+        <div className="w-full max-w-md mx-auto animate-slide-up">
+          <StepIndicator currentStep={2} totalSteps={4} />
+
+          <div className="card p-8">
+            <div className="text-center mb-6">
+              <div className="w-14 h-14 rounded-lg bg-tertiary-fixed flex items-center justify-center mx-auto mb-4">
+                <span className="material-symbols-outlined text-on-tertiary-fixed-variant text-[28px]" style={{ fontVariationSettings: "'FILL' 1" }}>
+                  edit_note
+                </span>
+              </div>
+              <h1 className="font-headline text-xl font-bold text-on-surface">Lengkapi Data Anda</h1>
+              <p className="font-body text-sm text-outline mt-1">
+                Mohon lengkapi data berikut sebelum menandatangani dokumen.
+              </p>
+            </div>
+
+            <form onSubmit={handleAdditionalDataSubmit} className="space-y-5">
+              {/* NIK */}
+              {!clientData?.nik && (
+                <div>
+                  <label className="label" htmlFor="fill-nik">
+                    No. KTP / NIK <span className="text-error">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    id="fill-nik"
+                    required
+                    maxLength={16}
+                    pattern="\d{16}"
+                    inputMode="numeric"
+                    className="input font-mono tracking-wider"
+                    placeholder="Masukkan 16 digit NIK"
+                    value={additionalNik}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/\D/g, '').slice(0, 16);
+                      setAdditionalNik(val);
+                    }}
+                  />
+                  <p className="font-body text-xs text-outline mt-1.5">
+                    {additionalNik.length}/16 digit
+                  </p>
+                </div>
+              )}
+
+              {/* Alamat */}
+              {!clientData?.address && (
+                <div>
+                  <label className="label" htmlFor="fill-address">
+                    Alamat Sesuai KTP <span className="text-error">*</span>
+                  </label>
+                  <textarea
+                    id="fill-address"
+                    required
+                    rows={3}
+                    className="input resize-none"
+                    placeholder="Masukkan alamat lengkap sesuai KTP"
+                    value={additionalAddress}
+                    onChange={(e) => setAdditionalAddress(e.target.value)}
+                  />
+                </div>
+              )}
+
+              {/* Kota */}
+              {!clientData?.city && (
+                <div>
+                  <label className="label" htmlFor="fill-city">
+                    Kota <span className="text-error">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    id="fill-city"
+                    required
+                    className="input"
+                    placeholder="Contoh: Jakarta, Surabaya, Bandung"
+                    value={additionalCity}
+                    onChange={(e) => setAdditionalCity(e.target.value)}
+                  />
+                </div>
+              )}
+
+              {error && (
+                <div className="bg-error-container border border-error/20 rounded-DEFAULT px-4 py-3 text-on-error-container text-sm font-body flex items-center gap-2">
+                  <span className="material-symbols-outlined text-[18px]">error</span>
+                  {error}
+                </div>
+              )}
+
+              <div className="bg-secondary-fixed/30 border border-secondary/20 rounded-DEFAULT p-4">
+                <div className="flex items-start gap-2.5">
+                  <span className="material-symbols-outlined text-secondary text-[18px] mt-0.5" style={{ fontVariationSettings: "'FILL' 1" }}>info</span>
+                  <p className="font-body text-xs text-on-secondary-fixed/80">
+                    Pastikan data yang Anda isi sesuai dengan KTP Anda. Data ini akan digunakan dalam dokumen resmi.
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                className="btn-primary w-full"
+                id="fill-data-submit"
+              >
+                <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
+                Lanjutkan
+              </button>
+            </form>
+          </div>
+        </div>
+      </PageWrapper>
+    );
+  }
+
   // Document preview + signing
   if (status === 'preview' && clientData) {
     return (
       <PageWrapper>
         <div className="w-full max-w-2xl mx-auto space-y-6 animate-fade-in">
+          {/* Step indicator */}
+          <StepIndicator currentStep={needsAdditionalData ? 3 : 2} totalSteps={needsAdditionalData ? 4 : 3} />
+
           {/* Client Data Summary */}
           <div className="card">
             <div className="card-header">
@@ -273,8 +459,9 @@ export default function SignPage() {
               <div className="bg-surface-container-low rounded-DEFAULT p-5 space-y-3 text-sm font-body">
                 <div className="flex"><span className="w-40 text-outline font-medium shrink-0">Nama Lengkap</span><span className="text-on-surface">: {clientData.fullName}</span></div>
                 <div className="flex"><span className="w-40 text-outline font-medium shrink-0">Tanggal Lahir</span><span className="text-on-surface">: {clientData.birthDate}</span></div>
-                <div className="flex"><span className="w-40 text-outline font-medium shrink-0">No. KTP / NIK</span><span className="text-on-surface font-mono">: {clientData.nik}</span></div>
-                <div className="flex"><span className="w-40 text-outline font-medium shrink-0">Alamat Sesuai KTP</span><span className="text-on-surface">: {clientData.address}</span></div>
+                <div className="flex"><span className="w-40 text-outline font-medium shrink-0">No. KTP / NIK</span><span className="text-on-surface font-mono">: {clientData.nik || '—'}</span></div>
+                <div className="flex"><span className="w-40 text-outline font-medium shrink-0">Alamat Sesuai KTP</span><span className="text-on-surface">: {clientData.address || '—'}</span></div>
+                <div className="flex"><span className="w-40 text-outline font-medium shrink-0">Kota</span><span className="text-on-surface">: {clientData.city || '—'}</span></div>
               </div>
             </div>
           </div>
@@ -288,6 +475,7 @@ export default function SignPage() {
                 <p className="font-body text-xs text-on-secondary-fixed/80">
                   Silakan baca dokumen PDF dengan seksama sebelum menandatangani. 
                   Dengan menandatangani, Anda menyatakan telah membaca, memahami, dan menyetujui seluruh ketentuan yang berlaku.
+                  Tanggal pada dokumen akan otomatis terisi saat Anda menandatangani.
                 </p>
               </div>
             </div>
@@ -382,6 +570,53 @@ export default function SignPage() {
   }
 
   return null;
+}
+
+// ═══════════════════════════════════════════════════════
+// Step Indicator Component
+// ═══════════════════════════════════════════════════════
+function StepIndicator({ currentStep, totalSteps }: { currentStep: number; totalSteps: number }) {
+  const stepLabels = totalSteps === 4
+    ? ['Verifikasi', 'Lengkapi Data', 'Pratinjau', 'Tanda Tangan']
+    : ['Verifikasi', 'Pratinjau', 'Tanda Tangan'];
+
+  return (
+    <div className="mb-6">
+      <div className="flex items-center justify-center gap-1.5">
+        {stepLabels.map((label, i) => {
+          const stepNum = i + 1;
+          const isActive = stepNum === currentStep;
+          const isCompleted = stepNum < currentStep;
+
+          return (
+            <React.Fragment key={i}>
+              {i > 0 && (
+                <div className={`h-0.5 w-8 sm:w-12 rounded-full transition-colors ${isCompleted ? 'bg-primary' : 'bg-surface-variant'}`} />
+              )}
+              <div className="flex flex-col items-center gap-1.5">
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold font-body transition-all ${
+                  isActive
+                    ? 'bg-primary text-on-primary shadow-sm scale-110'
+                    : isCompleted
+                      ? 'bg-primary/20 text-primary'
+                      : 'bg-surface-container text-outline'
+                }`}>
+                  {isCompleted ? (
+                    <span className="material-symbols-outlined text-[16px]">check</span>
+                  ) : stepNum}
+                </div>
+                <span className={`text-[10px] font-body font-medium hidden sm:block ${
+                  isActive ? 'text-primary' : isCompleted ? 'text-primary/60' : 'text-outline/60'
+                }`}>
+                  {label}
+                </span>
+              </div>
+            </React.Fragment>
+          );
+        })}
+      </div>
+    </div>
+  );
 }
 
 // Wrapper with EXATA branding for public pages

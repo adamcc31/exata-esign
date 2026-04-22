@@ -25,11 +25,12 @@ CREATE TABLE clients (
   batch_id          UUID REFERENCES batches(id) ON DELETE CASCADE,
   pic_user_id       UUID REFERENCES users(id),
 
-  -- Data Klien (dari Excel)
+  -- Data Klien (dari Excel — NIK, address, city may be empty and filled at signing)
   full_name         VARCHAR(255) NOT NULL,
   birth_date        DATE NOT NULL,
-  nik               VARCHAR(20) NOT NULL,
-  address           TEXT NOT NULL,
+  nik               VARCHAR(20),              -- Nullable: can be filled by client at signing
+  address           TEXT,                      -- Nullable: can be filled by client at signing
+  city              VARCHAR(255),              -- Nullable: can be filled by client at signing
   phone             VARCHAR(30) NOT NULL,
   nenkin_number     VARCHAR(50),
   account_number    VARCHAR(50),
@@ -41,8 +42,11 @@ CREATE TABLE clients (
   link_expires_at   TIMESTAMP NOT NULL,
   blank_pdf_url     TEXT,
 
-  -- Status
-  status            VARCHAR(30) DEFAULT 'pending' CHECK (status IN ('pending', 'signed', 'expired')),
+  -- Status: pending → viewed → signed | expired
+  status            VARCHAR(30) DEFAULT 'pending' CHECK (status IN ('pending', 'viewed', 'signed', 'expired')),
+
+  -- Tracking
+  viewed_at         TIMESTAMP,                -- When client first verified identity
 
   -- Data Setelah TTD
   signed_at         TIMESTAMP,

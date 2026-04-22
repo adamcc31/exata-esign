@@ -78,6 +78,12 @@ export default function BatchDetailPage() {
           Ditandatangani
         </span>
       );
+      case 'viewed': return (
+        <span className="badge-viewed">
+          <span className="material-symbols-outlined text-[14px]">visibility</span>
+          Dilihat
+        </span>
+      );
       case 'expired': return (
         <span className="badge-expired">
           <span className="material-symbols-outlined text-[14px]">cancel</span>
@@ -105,6 +111,7 @@ export default function BatchDetailPage() {
   }
 
   const signedCount = filteredClients.filter(c => c.status === 'signed').length;
+  const viewedCount = filteredClients.filter(c => c.status === 'viewed').length;
 
   return (
     <div className="animate-fade-in">
@@ -130,6 +137,15 @@ export default function BatchDetailPage() {
             <span className="material-symbols-outlined text-[16px]">task_alt</span>
             {signedCount} Sudah TTD
           </span>
+          {viewedCount > 0 && (
+            <>
+              <span className="text-outline-variant">•</span>
+              <span className="flex items-center gap-1 text-primary font-medium">
+                <span className="material-symbols-outlined text-[16px]">visibility</span>
+                {viewedCount} Dilihat
+              </span>
+            </>
+          )}
         </div>
       </div>
 
@@ -182,7 +198,7 @@ export default function BatchDetailPage() {
               ) : filteredClients.map((c: any) => (
                 <tr key={c.id}>
                   <td className="font-medium font-body">{c.full_name}</td>
-                  <td className="text-xs font-mono text-on-surface-variant">{c.nik}</td>
+                  <td className="text-xs font-mono text-on-surface-variant">{c.nik || <span className="text-outline/40 italic">Belum diisi</span>}</td>
                   <td className="text-xs font-body text-on-surface-variant">{c.birth_date_str}</td>
                   <td className="text-xs font-body text-on-surface-variant">{c.pic_name || '-'}</td>
                   <td>{statusBadge(c.status)}</td>
@@ -191,7 +207,7 @@ export default function BatchDetailPage() {
                   </td>
                   <td>
                     <div className="flex items-center gap-1">
-                      {c.status === 'pending' && (
+                      {(c.status === 'pending' || c.status === 'viewed') && (
                         <button
                           onClick={() => copyLink(c.slug)}
                           className={`btn-ghost btn-sm font-body ${copied === c.slug ? 'text-tertiary' : 'text-primary'}`}

@@ -19,7 +19,7 @@ export class BatchService {
    * 2. Create batch record
    * 3. Match PIC to users
    * 4. Create client records with slugs & letter numbers
-   * 5. Generate blank PDFs
+   * 5. Generate blank PDFs (with placeholders for empty fields)
    * 6. Generate output Excel
    * 7. Write audit log
    */
@@ -79,6 +79,8 @@ export class BatchService {
       const year = new Date().getFullYear();
       const month = new Date().getMonth() + 1;
 
+      const MONTHS_ID = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+
       for (let i = 0; i < data.length; i++) {
         const row = data[i];
 
@@ -100,35 +102,37 @@ export class BatchService {
         const linkExpiresAt = new Date();
         linkExpiresAt.setDate(linkExpiresAt.getDate() + 60);
 
-        // Format date for PDF
-        const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+        // Format birth date for PDF
         const birthDateStr = !isNaN(row.birthDate.getTime()) 
-          ? `${row.birthDate.getDate()} ${months[row.birthDate.getMonth()]} ${row.birthDate.getFullYear()}`
+          ? `${row.birthDate.getDate()} ${MONTHS_ID[row.birthDate.getMonth()]} ${row.birthDate.getFullYear()}`
           : '';
 
-        // Generate blank PDF
+        // Generate blank PDF — uses "—" placeholder for empty NIK/address/city
+        // Date field is left empty (server-generated at signing time)
         const pdfBytes = await generateBlankPdf({
           fullName: row.fullName,
           birthDate: birthDateStr,
-          nik: row.nik,
-          address: row.address,
-          city: row.city,
-          date: row.date,
+          nik: row.nik,         // May be empty → shows "—" in blank PDF
+          address: row.address, // May be empty → shows "—" in blank PDF
+          city: row.city,       // May be empty → shows nothing in blank PDF
         });
 
         const pdfKey = `blank-pdfs/${year}/${month}/${slug}_blank.pdf`;
         await uploadFileToS3(pdfKey, pdfBytes, 'application/pdf');
 
-        // Insert client record
+        // Insert client record — NIK, address, city can be NULL
         await client.query(
           `INSERT INTO clients (
-            batch_id, pic_user_id, full_name, birth_date, nik, address, phone,
+            batch_id, pic_user_id, full_name, birth_date, nik, address, city, phone,
             nenkin_number, account_number, pic_name, slug, letter_number,
             link_expires_at, blank_pdf_url
-          ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)`,
+          ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)`,
           [
-            batchId, picUserId, row.fullName, row.birthDate, row.nik,
-            row.address, row.phone, row.nenkinNumber, row.accountNumber,
+            batchId, picUserId, row.fullName, row.birthDate,
+            row.nik || null,      // Store NULL if empty
+            row.address || null,  // Store NULL if empty
+            row.city || null,     // Store NULL if empty
+            row.phone, row.nenkinNumber, row.accountNumber,
             row.picName, slug, slug, linkExpiresAt, pdfKey,
           ]
         );

@@ -3,10 +3,9 @@ import * as xlsx from 'xlsx';
 export interface ParsedClientData {
   fullName: string;
   birthDate: Date;
-  nik: string;
-  address: string;
-  city: string;
-  date: string;
+  nik: string;        // May be empty — client fills at signing
+  address: string;    // May be empty — client fills at signing
+  city: string;       // May be empty — client fills at signing
   phone: string;
   nenkinNumber: string;
   accountNumber: string;
@@ -19,14 +18,20 @@ export interface ValidationError {
   message: string;
 }
 
+// Only truly required columns in the Excel upload
+// NIK, Alamat Sesuai KTP, Kota, Tanggal are now OPTIONAL
 const REQUIRED_COLUMNS = [
   'Nama Lengkap',
   'Tanggal Lahir',
+  'PIC',
+];
+
+// Columns that are accepted but optional
+const OPTIONAL_COLUMNS = [
   'NIK',
   'Alamat Sesuai KTP',
   'Kota',
-  'Tanggal',
-  'PIC',
+  'Tanggal',  // Ignored — date is server-generated at signing time
 ];
 
 export function validateAndParseBatchExcel(buffer: Buffer): {
@@ -61,7 +66,7 @@ export function validateAndParseBatchExcel(buffer: Buffer): {
   }
   if (errors.length > 0) return { data, rawRows, errors };
 
-  // NIK duplicate check within batch
+  // NIK duplicate check within batch (only for non-empty NIKs)
   const nikSet = new Set<string>();
 
   for (let i = 0; i < rawRows.length; i++) {
@@ -72,7 +77,6 @@ export function validateAndParseBatchExcel(buffer: Buffer): {
     const nikRaw = String(row['NIK'] || '').trim();
     const address = String(row['Alamat Sesuai KTP'] || '').trim();
     const city = String(row['Kota'] || '').trim();
-    const date = String(row['Tanggal'] || '').trim();
     const phone = String(row['Nomor Telepon / WA'] || '').trim();
     const nenkinNumber = String(row['Nomor Nenkin'] || '').trim();
     const accountNumber = String(row['Nomor Rekening'] || '').trim();
@@ -80,19 +84,19 @@ export function validateAndParseBatchExcel(buffer: Buffer): {
 
     // Required field checks
     if (!fullName) errors.push({ row: rowNum, column: 'Nama Lengkap', message: 'Nama Lengkap wajib diisi.' });
-    if (!address) errors.push({ row: rowNum, column: 'Alamat Sesuai KTP', message: 'Alamat Sesuai KTP wajib diisi.' });
-    if (!city) errors.push({ row: rowNum, column: 'Kota', message: 'Kota wajib diisi.' });
 
-    // NIK validation: must be 16 numeric digits
-    if (!/^\d{16}$/.test(nikRaw)) {
-      errors.push({ row: rowNum, column: 'NIK', message: `NIK harus 16 digit angka, ditemukan: "${nikRaw}".` });
+    // NIK validation: only validate format if provided (not empty)
+    if (nikRaw) {
+      if (!/^\d{16}$/.test(nikRaw)) {
+        errors.push({ row: rowNum, column: 'NIK', message: `NIK harus 16 digit angka, ditemukan: "${nikRaw}".` });
+      }
+      if (nikSet.has(nikRaw)) {
+        errors.push({ row: rowNum, column: 'NIK', message: `NIK "${nikRaw}" duplikat dalam batch ini.` });
+      }
+      nikSet.add(nikRaw);
     }
-    if (nikSet.has(nikRaw)) {
-      errors.push({ row: rowNum, column: 'NIK', message: `NIK "${nikRaw}" duplikat dalam batch ini.` });
-    }
-    nikSet.add(nikRaw);
 
-    // Date parsing
+    // Date parsing for birth date
     let birthDate: Date;
     const dateVal = row['Tanggal Lahir'];
     if (dateVal instanceof Date && !isNaN(dateVal.getTime())) {
@@ -110,22 +114,15 @@ export function validateAndParseBatchExcel(buffer: Buffer): {
         birthDate = new Date(dateStr);
       }
     }
-    let signDate = '';
-    const signDateVal = row['Tanggal'];
-    if (signDateVal instanceof Date && !isNaN(signDateVal.getTime())) {
-      const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
-      signDate = `${signDateVal.getDate()} ${months[signDateVal.getMonth()]} ${signDateVal.getFullYear()}`;
-    } else {
-      signDate = String(signDateVal || '').trim();
+
+    if (isNaN(birthDate.getTime())) {
+      errors.push({ row: rowNum, column: 'Tanggal Lahir', message: 'Tanggal Lahir tidak valid.' });
     }
 
-    if (!signDate) errors.push({ row: rowNum, column: 'Tanggal', message: 'Tanggal wajib diisi.' });
+    // "Tanggal" column is now IGNORED — date is server-generated at signing time.
+    // We no longer parse or validate it.
 
-    // Both birthDate String formatting for PDF and DB
-    const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
-    const birthDatePdfFormat = isNaN(birthDate.getTime()) ? '' : `${birthDate.getDate()} ${months[birthDate.getMonth()]} ${birthDate.getFullYear()}`;
-
-    data.push({ fullName, birthDate, nik: nikRaw, address, city, date: signDate, phone, nenkinNumber, accountNumber, picName });
+    data.push({ fullName, birthDate, nik: nikRaw, address, city, phone, nenkinNumber, accountNumber, picName });
   }
 
   return { data, rawRows, errors };

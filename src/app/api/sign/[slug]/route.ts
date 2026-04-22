@@ -7,8 +7,6 @@ export async function GET(req: NextRequest, props: { params: Promise<{ slug: str
   const params = await props.params;
   const { slug } = params;
   try {
-    const { slug } = params;
-
     const result = await query(
       `SELECT full_name, status, link_expires_at, signed_at FROM clients WHERE slug = $1`,
       [slug]
@@ -22,10 +20,13 @@ export async function GET(req: NextRequest, props: { params: Promise<{ slug: str
     const now = new Date();
     const expiresAt = new Date(client.link_expires_at);
 
-    // Check if link is expired and status is still pending
-    if (client.status === 'pending' && expiresAt < now) {
+    // Check if link is expired and status is still pending or viewed
+    if ((client.status === 'pending' || client.status === 'viewed') && expiresAt < now) {
       // Auto-update status to expired
-      await query(`UPDATE clients SET status = 'expired', updated_at = NOW() WHERE slug = $1`, [slug]);
+      await query(
+        `UPDATE clients SET status = 'expired', updated_at = NOW() WHERE slug = $1 AND status IN ('pending', 'viewed')`,
+        [slug]
+      );
       return NextResponse.json({
         status: 'expired',
         firstName: client.full_name.split(' ')[0],
@@ -47,7 +48,8 @@ export async function GET(req: NextRequest, props: { params: Promise<{ slug: str
       });
     }
 
-    // Pending and not expired — ready for verification
+    // Pending or Viewed and not expired — ready for verification
+    // Frontend treats both as "verify" state
     return NextResponse.json({
       status: 'pending',
       firstName: client.full_name.split(' ')[0],

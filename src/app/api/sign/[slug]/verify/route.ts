@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
+import { createAuditLog } from '@/services/audit.service';
 
 // In-memory rate limiting (production should use Redis)
 const rateLimitMap = new Map<string, { attempts: number; lockUntil: number }>();
@@ -28,8 +29,8 @@ export async function POST(req: NextRequest, props: { params: Promise<{ slug: st
     }
 
     const result = await query(
-      `SELECT id, full_name, TO_CHAR(birth_date, 'YYYY-MM-DD') as birth_date_str, status, link_expires_at, nik, address, phone,
-              nenkin_number, account_number, letter_number, blank_pdf_url
+      `SELECT id, full_name, TO_CHAR(birth_date, 'YYYY-MM-DD') as birth_date_str, status, link_expires_at,
+              nik, address, city, phone, nenkin_number, account_number, letter_number, blank_pdf_url
        FROM clients WHERE slug = $1`,
       [slug]
     );
@@ -42,13 +43,21 @@ export async function POST(req: NextRequest, props: { params: Promise<{ slug: st
 
     // Check expired
     if (new Date(client.link_expires_at) < new Date()) {
-      await query(`UPDATE clients SET status = 'expired', updated_at = NOW() WHERE slug = $1 AND status = 'pending'`, [slug]);
+      await query(
+        `UPDATE clients SET status = 'expired', updated_at = NOW() WHERE slug = $1 AND status IN ('pending', 'viewed')`,
+        [slug]
+      );
       return NextResponse.json({ error: 'Link sudah kedaluwarsa.' }, { status: 410 });
     }
 
     // Check already signed
-    if (client.status !== 'pending') {
-      return NextResponse.json({ error: 'Dokumen sudah ditandatangani atau link tidak aktif.' }, { status: 400 });
+    if (client.status === 'signed') {
+      return NextResponse.json({ error: 'Dokumen sudah ditandatangani.' }, { status: 400 });
+    }
+
+    // Allow verification for both 'pending' and 'viewed' (client may re-verify after page refresh)
+    if (client.status !== 'pending' && client.status !== 'viewed') {
+      return NextResponse.json({ error: 'Link tidak aktif.' }, { status: 400 });
     }
 
     // Compare dates directly (both are YYYY-MM-DD formatted strings now)
@@ -69,17 +78,39 @@ export async function POST(req: NextRequest, props: { params: Promise<{ slug: st
       );
     }
 
-    // Success — clear rate limit and return client data for preview
+    // Success — clear rate limit
     rateLimitMap.delete(rateKey);
+
+    // Update status to 'viewed' (only if currently 'pending')
+    if (client.status === 'pending') {
+      await query(
+        `UPDATE clients SET status = 'viewed', viewed_at = NOW(), updated_at = NOW() WHERE slug = $1 AND status = 'pending'`,
+        [slug]
+      );
+
+      // Audit log for viewed event
+      await createAuditLog({
+        actorId: null,
+        actorType: 'client',
+        action: 'client_viewed',
+        targetId: client.id,
+        metadata: { slug, ip },
+      });
+    }
+
+    // Determine if client needs to fill additional data
+    const needsAdditionalData = !client.nik || !client.address || !client.city;
 
     return NextResponse.json({
       success: true,
+      needsAdditionalData,
       clientData: {
         id: client.id,
         fullName: client.full_name,
         birthDate: client.birth_date_str,
-        nik: client.nik,
-        address: client.address,
+        nik: client.nik || '',
+        address: client.address || '',
+        city: client.city || '',
         letterNumber: client.letter_number,
       },
     });

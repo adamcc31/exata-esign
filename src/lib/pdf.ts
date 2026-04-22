@@ -19,13 +19,23 @@ async function getTemplateBytes(): Promise<Uint8Array> {
   return pdfDoc.save();
 }
 
+// Load the custom font (shared helper)
+async function loadFont(pdfDoc: PDFDocument): Promise<PDFFont> {
+  pdfDoc.registerFontkit(fontkit);
+  const fontPath = path.join(process.cwd(), 'public', 'fonts', 'GoogleSans-Regular.ttf');
+  if (fs.existsSync(fontPath)) {
+    const fontBytes = fs.readFileSync(fontPath);
+    return pdfDoc.embedFont(fontBytes);
+  }
+  return pdfDoc.embedFont(StandardFonts.Helvetica);
+}
+
 interface BlankPdfData {
   fullName: string;
   birthDate: string;
   nik: string;
   address: string;
   city: string;
-  date: string;
 }
 
 /**
@@ -35,57 +45,46 @@ interface BlankPdfData {
  * (Nama Lengkap, Nomor KTP / NIK, etc.) and colons.
  * We ONLY overlay the VALUES — no labels, no colons.
  * 
+ * Fields that are empty (NIK, address, city) will show "—" placeholder.
+ * The date field is left blank — it will be filled at signing time.
+ * 
  * The coordinates below are calibrated for the actual Surat.pdf template (595.32 x 842.04 A4).
  * Y coordinates in pdf-lib start from BOTTOM (0) to TOP (842).
- * 
- * Use calibration-grid.pdf to visually verify positions.
  */
 export async function generateBlankPdf(data: BlankPdfData): Promise<Buffer> {
   const templateBytes = await getTemplateBytes();
   const pdfDoc = await PDFDocument.load(templateBytes);
-
-  // Register fontkit & Embed Google Sans TTF
-  pdfDoc.registerFontkit(fontkit);
-  let font: PDFFont;
-  const fontPath = path.join(process.cwd(), 'public', 'fonts', 'GoogleSans-Regular.ttf');
-  if (fs.existsSync(fontPath)) {
-    const fontBytes = fs.readFileSync(fontPath);
-    font = await pdfDoc.embedFont(fontBytes);
-  } else {
-    font = await pdfDoc.embedFont(StandardFonts.Helvetica);
-  }
+  const font = await loadFont(pdfDoc);
 
   const pages = pdfDoc.getPages();
   const page1 = pages[0];
-  const { height } = page1.getSize();
 
   const fontSize = 11;
   const color = rgb(0, 0, 0);
 
   // ═══════════════════════════════════════════════════════
   // PAGE 1 — Client data fields
+  // Use "—" for empty fields (will be filled at signing time)
   // ═══════════════════════════════════════════════════════
 
-  // ═══════════════════════════════════════════════════════
-
-  // Form fields mapped to new positions
   const fieldPositions = [
-    { value: data.fullName, x: 225, y: 725 },
-    { value: data.birthDate, x: 225, y: 701 },
-    { value: data.nik, x: 225, y: 677 },
-    { value: data.address, x: 225, y: 653 },
+    { value: data.fullName || '—', x: 225, y: 725 },
+    { value: data.birthDate || '—', x: 225, y: 701 },
+    { value: data.nik || '—', x: 225, y: 677 },
+    { value: data.address || '—', x: 225, y: 653 },
   ];
 
   fieldPositions.forEach(({ value, x, y }) => {
-    page1.drawText(value || '-', { x, y, size: fontSize, font, color });
+    page1.drawText(value, { x, y, size: fontSize, font, color });
   });
 
-  // Kota & Tanggal
-  if (data.city && data.date) {
-    page1.drawText(`${data.city}, ${data.date}`, { x: 440, y: 188, size: fontSize, font, color });
+  // Kota & Tanggal — date is blank at this stage (server-generated at signing)
+  // Only show city if available, no date
+  if (data.city) {
+    page1.drawText(`${data.city},`, { x: 440, y: 188, size: fontSize, font, color });
   }
 
-  // Nama Lengkap at the bottom under signature
+  // Nama Lengkap at the bottom under signature area
   // Rata kanan (Right-aligned) agar nama panjang memanjang ke kiri
   const nameWidth = font.widthOfTextAtSize(data.fullName, fontSize);
   const rightAnchorX = 550; // Perkiraan batas margin kanan dokumen
@@ -101,20 +100,70 @@ export async function generateBlankPdf(data: BlankPdfData): Promise<Buffer> {
   return Buffer.from(await pdfDoc.save());
 }
 
+interface SignedPdfData {
+  fullName: string;
+  birthDate: string;
+  nik: string;
+  address: string;
+  city: string;
+  signingDate: string;  // Server-generated, e.g. "26 April 2026"
+}
+
 /**
- * Overlay signature image onto a pre-filled PDF.
- * Signature goes in the "Yang Membuat Pernyataan" area on the LAST page.
+ * Generate the FINAL signed PDF from template with COMPLETE data + embedded signature.
+ * 
+ * This regenerates the PDF from the original template (NOT from blank PDF).
+ * This ensures:
+ * - Client-submitted NIK/address/city are properly embedded
+ * - Server-generated signing date is used (not Excel date)
+ * - No placeholder "—" text appears in the final document
  */
 export async function generateSignedPdf(
-  blankPdfBytes: Buffer,
   signatureImageBytes: Buffer,
-  signingDate: string
+  data: SignedPdfData
 ): Promise<Buffer> {
-  const pdfDoc = await PDFDocument.load(blankPdfBytes);
-  const signatureImage = await pdfDoc.embedPng(signatureImageBytes);
-  const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  const templateBytes = await getTemplateBytes();
+  const pdfDoc = await PDFDocument.load(templateBytes);
+  const font = await loadFont(pdfDoc);
+
   const pages = pdfDoc.getPages();
-  const lastPage = pages[0]; // NOW ON PAGE 1
+  const page1 = pages[0];
+
+  const fontSize = 11;
+  const color = rgb(0, 0, 0);
+
+  // ═══════════════════════════════════════════════════════
+  // PAGE 1 — Client data fields (all complete now)
+  // ═══════════════════════════════════════════════════════
+
+  const fieldPositions = [
+    { value: data.fullName, x: 225, y: 725 },
+    { value: data.birthDate, x: 225, y: 701 },
+    { value: data.nik, x: 225, y: 677 },
+    { value: data.address, x: 225, y: 653 },
+  ];
+
+  fieldPositions.forEach(({ value, x, y }) => {
+    page1.drawText(value || '-', { x, y, size: fontSize, font, color });
+  });
+
+  // Kota & Tanggal (server-generated signing date)
+  if (data.city && data.signingDate) {
+    page1.drawText(`${data.city}, ${data.signingDate}`, { x: 440, y: 188, size: fontSize, font, color });
+  } else if (data.signingDate) {
+    page1.drawText(data.signingDate, { x: 440, y: 188, size: fontSize, font, color });
+  }
+
+  // Nama Lengkap at the bottom under signature
+  const nameWidth = font.widthOfTextAtSize(data.fullName, fontSize);
+  const rightAnchorX = 550;
+  const nameX = rightAnchorX - nameWidth;
+  page1.drawText(data.fullName, { x: nameX, y: 68, size: fontSize, font, color });
+
+  // ═══════════════════════════════════════════════════════
+  // Embed signature image
+  // ═══════════════════════════════════════════════════════
+  const signatureImage = await pdfDoc.embedPng(signatureImageBytes);
 
   // Scale signature
   const sigDims = signatureImage.scale(0.5);
@@ -122,17 +171,18 @@ export async function generateSignedPdf(
   const maxHeight = 50;
   const scale = Math.min(maxWidth / sigDims.width, maxHeight / sigDims.height, 1);
 
-  // Tanda tangan placed above the name on Page 1 (X=440, Y=106)
-  lastPage.drawImage(signatureImage, {
+  // Tanda tangan placed above the name on Page 1 (X=440, Y=100)
+  page1.drawImage(signatureImage, {
     x: 440,
     y: 100,
     width: sigDims.width * scale,
     height: sigDims.height * scale,
   });
 
-  // Since Tanggal is already embedded by generateBlankPdf or Excel data, 
-  // we do not overlay signingDate manually here anymore, or we can fallback overlay it.
-
+  // PDF metadata
+  pdfDoc.setTitle(`Surat Pernyataan - ${data.fullName}`);
+  pdfDoc.setAuthor('PT. Sumber Rezeki Exata Indonesia');
+  pdfDoc.setCreationDate(new Date());
   pdfDoc.setModificationDate(new Date());
 
   return Buffer.from(await pdfDoc.save());

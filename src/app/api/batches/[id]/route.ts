@@ -36,14 +36,14 @@ export async function GET(req: NextRequest, props: { params: Promise<{ id: strin
     if (user.role === 'super_admin') {
       // Super admin sees all clients
       clientsResult = await query(
-        `SELECT id, full_name, nik, status, slug, TO_CHAR(birth_date, 'DD/MM/YYYY') as birth_date_str, signed_at, link_expires_at, pic_name
+        `SELECT id, full_name, nik, status, slug, TO_CHAR(birth_date, 'DD/MM/YYYY') as birth_date_str, signed_at, viewed_at, link_expires_at, pic_name
          FROM clients WHERE batch_id = $1 ORDER BY created_at ASC`,
         [id]
       );
     } else {
       // Staff only sees their own PIC clients
       clientsResult = await query(
-        `SELECT id, full_name, nik, status, slug, TO_CHAR(birth_date, 'DD/MM/YYYY') as birth_date_str, signed_at, link_expires_at, pic_name
+        `SELECT id, full_name, nik, status, slug, TO_CHAR(birth_date, 'DD/MM/YYYY') as birth_date_str, signed_at, viewed_at, link_expires_at, pic_name
          FROM clients WHERE batch_id = $1 AND LOWER(pic_name) = LOWER($2) ORDER BY created_at ASC`,
         [id, user.name]
       );
