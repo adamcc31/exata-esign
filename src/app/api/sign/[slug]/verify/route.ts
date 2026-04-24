@@ -99,7 +99,7 @@ export async function POST(req: NextRequest, props: { params: Promise<{ slug: st
     }
 
     // Determine if client needs to fill additional data
-    const needsAdditionalData = !client.nik || !client.address || !client.city;
+    const needsAdditionalData = !client.nik || !client.address || !client.city || !client.email;
 
     return NextResponse.json({
       success: true,

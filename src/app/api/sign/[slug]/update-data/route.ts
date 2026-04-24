@@ -61,8 +61,8 @@ export async function POST(req: NextRequest, props: { params: Promise<{ slug: st
     if (!finalCity) {
       return NextResponse.json({ error: 'Kota wajib diisi.' }, { status: 400 });
     }
-    if (!finalEmail || !finalEmail.includes('@')) {
-      return NextResponse.json({ error: 'Alamat email valid wajib diisi (mengandung @).' }, { status: 400 });
+    if (!finalEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(finalEmail)) {
+      return NextResponse.json({ error: 'Alamat email valid wajib diisi (contoh: nama@domain.com).' }, { status: 400 });
     }
 
     // Format birth date for PDF

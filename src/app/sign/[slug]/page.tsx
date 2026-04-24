@@ -126,8 +126,8 @@ export default function SignPage() {
       setError('Kota wajib diisi.');
       return;
     }
-    if (!additionalEmail.trim() || !additionalEmail.includes('@')) {
-      setError('Alamat email valid wajib diisi (mengandung @).');
+    if (!additionalEmail.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(additionalEmail)) {
+      setError('Alamat email valid wajib diisi (contoh: nama@domain.com).');
       return;
     }
 
@@ -383,88 +383,80 @@ export default function SignPage() {
 
             <form onSubmit={handleAdditionalDataSubmit} className="space-y-5">
               {/* NIK */}
-              {!clientData?.nik && (
-                <div>
-                  <label className="label" htmlFor="fill-nik">
-                    No. KTP / NIK <span className="text-error">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    id="fill-nik"
-                    required
-                    maxLength={16}
-                    pattern="\d{16}"
-                    inputMode="numeric"
-                    className="input font-mono tracking-wider"
-                    placeholder="Masukkan 16 digit NIK"
-                    value={additionalNik}
-                    onChange={(e) => {
-                      const val = e.target.value.replace(/\D/g, '').slice(0, 16);
-                      setAdditionalNik(val);
-                    }}
-                  />
-                  <p className="font-body text-xs text-outline mt-1.5">
-                    {additionalNik.length}/16 digit
-                  </p>
-                </div>
-              )}
+              <div>
+                <label className="label" htmlFor="fill-nik">
+                  No. KTP / NIK <span className="text-error">*</span>
+                </label>
+                <input
+                  type="text"
+                  id="fill-nik"
+                  required
+                  maxLength={16}
+                  pattern="\d{16}"
+                  inputMode="numeric"
+                  className="input font-mono tracking-wider"
+                  placeholder="Masukkan 16 digit NIK"
+                  value={additionalNik}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/\D/g, '').slice(0, 16);
+                    setAdditionalNik(val);
+                  }}
+                />
+                <p className="font-body text-xs text-outline mt-1.5">
+                  {additionalNik.length}/16 digit
+                </p>
+              </div>
 
               {/* Alamat */}
-              {!clientData?.address && (
-                <div>
-                  <label className="label" htmlFor="fill-address">
-                    Alamat Sesuai KTP <span className="text-error">*</span>
-                  </label>
-                  <textarea
-                    id="fill-address"
-                    required
-                    rows={3}
-                    className="input resize-none"
-                    placeholder="Masukkan alamat lengkap sesuai KTP"
-                    value={additionalAddress}
-                    onChange={(e) => setAdditionalAddress(e.target.value)}
-                  />
-                </div>
-              )}
+              <div>
+                <label className="label" htmlFor="fill-address">
+                  Alamat Sesuai KTP <span className="text-error">*</span>
+                </label>
+                <textarea
+                  id="fill-address"
+                  required
+                  rows={3}
+                  className="input resize-none"
+                  placeholder="Masukkan alamat lengkap sesuai KTP"
+                  value={additionalAddress}
+                  onChange={(e) => setAdditionalAddress(e.target.value)}
+                />
+              </div>
 
               {/* Kota */}
-              {!clientData?.city && (
-                <div>
-                  <label className="label" htmlFor="fill-city">
-                    Kota <span className="text-error">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    id="fill-city"
-                    required
-                    className="input"
-                    placeholder="Contoh: Jakarta, Surabaya, Bandung"
-                    value={additionalCity}
-                    onChange={(e) => setAdditionalCity(e.target.value)}
-                  />
-                </div>
-              )}
+              <div>
+                <label className="label" htmlFor="fill-city">
+                  Kota <span className="text-error">*</span>
+                </label>
+                <input
+                  type="text"
+                  id="fill-city"
+                  required
+                  className="input"
+                  placeholder="Contoh: Jakarta, Surabaya, Bandung"
+                  value={additionalCity}
+                  onChange={(e) => setAdditionalCity(e.target.value)}
+                />
+              </div>
 
               {/* Email */}
-              {!clientData?.email && (
-                <div>
-                  <label className="label" htmlFor="fill-email">
-                    Alamat Email (Pengiriman PDF) <span className="text-error">*</span>
-                  </label>
-                  <input
-                    type="email"
-                    id="fill-email"
-                    required
-                    className="input"
-                    placeholder="Contoh: budi@gmail.com"
-                    value={additionalEmail}
-                    onChange={(e) => setAdditionalEmail(e.target.value)}
-                  />
-                  <p className="font-body text-[11px] text-outline mt-1.5">
-                    Salinan PDF yang telah ditandatangani akan dikirim ke email ini.
-                  </p>
-                </div>
-              )}
+              <div>
+                <label className="label" htmlFor="fill-email">
+                  Alamat Email (Pengiriman PDF) <span className="text-error">*</span>
+                </label>
+                <input
+                  type="email"
+                  id="fill-email"
+                  required
+                  className="input"
+                  placeholder="Contoh: budi@gmail.com"
+                  value={additionalEmail}
+                  onChange={(e) => setAdditionalEmail(e.target.value)}
+                />
+                <p className="font-body text-[11px] text-outline mt-1.5">
+                  Salinan PDF yang telah ditandatangani akan dikirim ke email ini.
+                </p>
+              </div>
 
               {error && (
                 <div className="bg-error-container border border-error/20 rounded-DEFAULT px-4 py-3 text-on-error-container text-sm font-body flex items-center gap-2">
@@ -512,15 +504,13 @@ export default function SignPage() {
                 <h2 className="font-headline text-base font-bold text-on-surface">Data Anda</h2>
                 <p className="font-body text-xs text-outline mt-0.5">No. Surat: {clientData.letterNumber}</p>
               </div>
-              {needsAdditionalData && (
-                <button 
-                  onClick={() => setStatus('fill-data')}
-                  className="btn-secondary py-1.5 px-3 text-xs shrink-0"
-                >
-                  <span className="material-symbols-outlined text-[16px]">edit</span>
-                  Ubah Data
-                </button>
-              )}
+              <button 
+                onClick={() => setStatus('fill-data')}
+                className="btn-secondary py-1.5 px-3 text-xs shrink-0"
+              >
+                <span className="material-symbols-outlined text-[16px]">edit</span>
+                Ubah Data
+              </button>
             </div>
             <div className="card-body">
               <div className="bg-surface-container-low rounded-DEFAULT p-5 space-y-3 text-sm font-body">
