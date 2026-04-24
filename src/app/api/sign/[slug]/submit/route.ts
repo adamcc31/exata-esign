@@ -59,8 +59,8 @@ export async function POST(req: NextRequest, props: { params: Promise<{ slug: st
     if (!finalCity) {
       return NextResponse.json({ error: 'Kota wajib diisi.' }, { status: 400 });
     }
-    if (!finalEmail || !/^\S+@\S+\.\S+$/.test(finalEmail)) {
-      return NextResponse.json({ error: 'Email wajib diisi dan harus valid.' }, { status: 400 });
+    if (!finalEmail || !finalEmail.includes('@')) {
+      return NextResponse.json({ error: 'Email wajib diisi dan harus valid (mengandung @).' }, { status: 400 });
     }
 
     // ─── Generate server-side signing date (WIB / Asia/Jakarta) ──

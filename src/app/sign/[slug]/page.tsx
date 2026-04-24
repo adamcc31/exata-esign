@@ -126,8 +126,8 @@ export default function SignPage() {
       setError('Kota wajib diisi.');
       return;
     }
-    if (!additionalEmail.trim() || !/^\S+@\S+\.\S+$/.test(additionalEmail)) {
-      setError('Alamat email valid wajib diisi.');
+    if (!additionalEmail.trim() || !additionalEmail.includes('@')) {
+      setError('Alamat email valid wajib diisi (mengandung @).');
       return;
     }
 
@@ -507,9 +507,20 @@ export default function SignPage() {
 
           {/* Client Data Summary */}
           <div className="card">
-            <div className="card-header">
-              <h2 className="font-headline text-base font-bold text-on-surface">Data Anda</h2>
-              <p className="font-body text-xs text-outline mt-0.5">No. Surat: {clientData.letterNumber}</p>
+            <div className="card-header flex justify-between items-start sm:items-center gap-4">
+              <div>
+                <h2 className="font-headline text-base font-bold text-on-surface">Data Anda</h2>
+                <p className="font-body text-xs text-outline mt-0.5">No. Surat: {clientData.letterNumber}</p>
+              </div>
+              {needsAdditionalData && (
+                <button 
+                  onClick={() => setStatus('fill-data')}
+                  className="btn-secondary py-1.5 px-3 text-xs shrink-0"
+                >
+                  <span className="material-symbols-outlined text-[16px]">edit</span>
+                  Ubah Data
+                </button>
+              )}
             </div>
             <div className="card-body">
               <div className="bg-surface-container-low rounded-DEFAULT p-5 space-y-3 text-sm font-body">
